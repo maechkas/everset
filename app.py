@@ -82,7 +82,7 @@ if st.button("▶️"):
 
 if st.session_state.play_audio:
 
-    audio_url = "/Users/maya/Downloads/Labrinth - Mount Everest (Official Audio).mp3"
+    audio_url = "Labrinth - Mount Everest (Official Audio).mp3"
 
     st.audio(audio_url, format="audio/mp3", autoplay=True)
 
