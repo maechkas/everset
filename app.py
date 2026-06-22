@@ -72,7 +72,7 @@ plt.rcParams.update({
     "text.color":        PINK2,
     "grid.color":        "#3d1030",
     "grid.alpha":        0.5,
-    "axes.titlecolor":   PINK2,
+
 })
 
 
@@ -152,13 +152,15 @@ st.markdown("---")
 # OVERVIEW
 # ═══════════════════════════════════════════════════════════════════════════
 if section == "📊 Overview":
+    st.markdown("## Key Statistics")
+    # Row 1
     c1, c2, c3, c4, c5 = st.columns(5)
     for col, label, val, sub in [
-        (c1, "Total Ascents",      f"{len(ascents):,}",                      "1953–2020"),
-        (c2, "Fatalities",         f"{len(deaths):,}",                       "since 1922"),
-        (c3, "Years Covered",      f"{ascents['Year'].max()-ascents['Year'].min()}", "years"),
-        (c4, "Avg Mortality",      f"{ascents['Dth_num'].mean()*100:.1f}%",  "per ascent"),
-        (c5, "Avg Climber Age",    f"{ascents['Age'].mean():.1f}",           "years old"),
+        (c1, "Total Ascents",      f"{len(ascents):,}",                                "1953–2020"),
+        (c2, "Fatalities",         f"{len(deaths):,}",                                 "since 1922"),
+        (c3, "Years Covered",      f"{ascents['Year'].max()-ascents['Year'].min()}",    "years of data"),
+        (c4, "Avg Mortality",      f"{ascents['Dth_num'].mean()*100:.1f}%",            "per ascent"),
+        (c5, "Avg Climber Age",    f"{ascents['Age'].mean():.1f}",                     "years old"),
     ]:
         col.markdown(f"""
         <div class="metric-card">
@@ -169,63 +171,100 @@ if section == "📊 Overview":
 
     st.markdown("---")
 
-    # 1. Line plot ascents by year
-    st.markdown("## Number of ascents on Everest")
-    by_year = ascents.groupby("Year").size().reset_index(name="Ascents")
-    fig, ax = styled_fig(10, 4)
-    ax.plot(by_year["Year"], by_year["Ascents"], color=PINK1, linewidth=2, marker="o", markersize=3)
-    ax.set_title("Number of ascents on Everest", color=PINK2, fontsize=13)
-    ax.set_xlabel("Year"); ax.set_ylabel("Number of Ascents")
-    ax.set_xlim(1953, 2020)
-    ax.grid(True, alpha=0.3)
-    st.pyplot(fig); plt.close()
+    # Row 2: more detailed stats
+    c1, c2, c3, c4 = st.columns(4)
+    male_pct   = (ascents["Sex"] == "M").mean() * 100
+    oxy_pct    = ascents["Oxy_num"].mean() * 100
+    peak_year  = ascents.groupby("Year").size().idxmax()
+    top_nation = ascents["Citizenship"].value_counts().index[0]
+    for col, label, val, sub in [
+        (c1, "Male Climbers",       f"{male_pct:.1f}%",    "of all ascents"),
+        (c2, "Used Oxygen",         f"{oxy_pct:.1f}%",     "of all ascents"),
+        (c3, "Busiest Year",        str(peak_year),        f"{ascents.groupby('Year').size()[peak_year]} ascents"),
+        (c4, "Top Nation",          top_nation,            "by ascent count"),
+    ]:
+        col.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-label">{label}</div>
+            <div class="metric-value">{val}</div>
+            <div class="metric-sub">{sub}</div>
+        </div>""", unsafe_allow_html=True)
 
-    st.markdown("""<div class="insight-box">The number of ascents per year witnessed an upward trend from 1960, with striking fluctuations throughout — including dips after major disasters (1996, 2014–2015) and the COVID-19 closure.</div>""", unsafe_allow_html=True)
     st.markdown("---")
 
-    # 2. Age histograms side-by-side
-    st.markdown("## Spread of alpinists by age")
-    fig, axes = styled_fig2(2, 14, 5)
-    fig.suptitle("Spread of alpinists by age", color=PINK2, fontsize=14)
-    axes[0].hist(ascents["Age"], bins=10, color=PINK1, edgecolor=BG)
-    axes[0].set_title("Age of ascenders", color=PINK2)
-    axes[0].set_xlabel("Age"); axes[0].set_ylabel("Number of climbers")
-    axes[1].hist(deaths["Age"], bins=10, color=PINK3, edgecolor=BG)
-    axes[1].set_title("Age of dead people", color=PINK2)
-    axes[1].set_xlabel("Age"); axes[1].set_ylabel("Number of Dead People")
-    plt.tight_layout()
-    st.pyplot(fig); plt.close()
+    # Row 3: age & death stats
+    c1, c2, c3, c4 = st.columns(4)
+    min_age   = int(ascents["Age"].min())
+    max_age   = int(ascents["Age"].max())
+    no_oxy_m  = ascents[ascents["Oxy"] == "No"]["Dth_num"].mean() * 100
+    oxy_m     = ascents[ascents["Oxy"] == "Y"]["Dth_num"].mean() * 100
+    top_cause = deaths["Cause of death"].value_counts().index[0]
+    peak_dth  = deaths.groupby("Year").size().idxmax()
+    for col, label, val, sub in [
+        (c1, "Youngest Climber",    f"{min_age} yrs",      "on record"),
+        (c2, "Oldest Climber",      f"{max_age} yrs",      "on record"),
+        (c3, "Mortality w/o O₂",   f"{no_oxy_m:.1f}%",    f"vs {oxy_m:.1f}% with O₂"),
+        (c4, "Deadliest Year",      str(peak_dth),         f"{deaths.groupby('Year').size()[peak_dth]} deaths"),
+    ]:
+        col.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-label">{label}</div>
+            <div class="metric-value">{val}</div>
+            <div class="metric-sub">{sub}</div>
+        </div>""", unsafe_allow_html=True)
 
-    st.markdown("""<div class="insight-box">Both distributions are centred around 30–40 years old.</div>""", unsafe_allow_html=True)
     st.markdown("---")
 
-    # 3. Bar chart by sex
-    st.markdown("## Climbers by Sex")
-    sex_counts = ascents["Sex"].value_counts()
-    fig, ax = styled_fig(5, 4)
-    ax.bar(sex_counts.index, sex_counts.values, color=[PINK1, PINK3])
-    ax.set_title("Climbers by Sex", color=PINK2)
-    ax.set_ylabel("Number of climbers"); ax.set_xlabel("Sex")
-    st.pyplot(fig); plt.close()
-
-    st.markdown("""<div class="insight-box">Everest climbers are overwhelmingly male.</div>""", unsafe_allow_html=True)
-    st.markdown("---")
-
-    # 4. Pie nationality deaths
-    st.markdown("## Climbers by Nationality (fatalities)")
-    nat = deaths["Nationality"].value_counts()
-    fig, ax = plt.subplots(figsize=(8, 8))
-    fig.patch.set_facecolor(BG)
-    ax.set_facecolor(BG)
-    pinks = [PINK1, PINK3, PINK2, "#d04080", "#f0c0d8", "#a02050",
-             "#e890b8", "#b83068", "#f5b8d0", "#903058",
-             "#c06090", "#802040", "#fae0ec", "#701830", "#c8a0b8"]
-    ax.pie(nat.values, labels=nat.index, autopct="%1.1f%%",
-           colors=pinks[:len(nat)], textprops={"color": PINK2})
-    ax.set_title("Climbers by Nationality", color=PINK2)
-    st.pyplot(fig); plt.close()
-
-    st.markdown("""<div class="insight-box">Nepali climbers made up the largest single group among recorded fatalities, followed by American and Indian climbers.</div>""", unsafe_allow_html=True)
+    # Row 4: descriptive stats tables side by side
+    st.markdown("## Descriptive Statistics")
+    ca, cb = st.columns(2)
+    with ca:
+        st.markdown("**Ascent dataset — Age**")
+        age1 = ascents["Age"].dropna()
+        st.markdown(f"""
+        <div class="insight-box">
+        Mean: <b>{age1.mean():.2f}</b> &nbsp;|&nbsp;
+        Median: <b>{age1.median():.2f}</b> &nbsp;|&nbsp;
+        Std: <b>{age1.std():.2f}</b><br>
+        Min: <b>{int(age1.min())}</b> &nbsp;|&nbsp;
+        Max: <b>{int(age1.max())}</b> &nbsp;|&nbsp;
+        Nulls: <b>{ascents["Age"].isnull().sum()}</b>
+        </div>""", unsafe_allow_html=True)
+        st.markdown("**Oxygen use**")
+        oxy_n = ascents["Oxy_num"].dropna()
+        st.markdown(f"""
+        <div class="insight-box">
+        Mean: <b>{oxy_n.mean()*100:.2f}%</b> &nbsp;|&nbsp;
+        Median: <b>{oxy_n.median()*100:.2f}%</b> &nbsp;|&nbsp;
+        Std: <b>{oxy_n.std()*100:.2f}%</b>
+        </div>""", unsafe_allow_html=True)
+        st.markdown("**Mortality**")
+        dth_n = ascents["Dth_num"].dropna()
+        st.markdown(f"""
+        <div class="insight-box">
+        Mean: <b>{dth_n.mean()*100:.1f}%</b> &nbsp;|&nbsp;
+        Std: <b>{dth_n.std():.3f}</b> &nbsp;|&nbsp;
+        Total deaths: <b>{int(dth_n.sum())}</b>
+        </div>""", unsafe_allow_html=True)
+    with cb:
+        st.markdown("**Deaths dataset — Age**")
+        age2 = deaths["Age"].dropna()
+        st.markdown(f"""
+        <div class="insight-box">
+        Mean: <b>{age2.mean():.2f}</b> &nbsp;|&nbsp;
+        Median: <b>{age2.median():.2f}</b> &nbsp;|&nbsp;
+        Std: <b>{age2.std():.2f}</b><br>
+        Min: <b>{int(age2.min())}</b> &nbsp;|&nbsp;
+        Max: <b>{int(age2.max())}</b> &nbsp;|&nbsp;
+        Nulls: <b>{deaths["Age"].isnull().sum()}</b>
+        </div>""", unsafe_allow_html=True)
+        st.markdown("**Top causes of death**")
+        for cause, cnt in deaths["Cause of death"].value_counts().head(5).items():
+            st.markdown(f"""
+            <div style="background:#2d0020;border-left:3px solid #e05090;border-radius:0 8px 8px 0;
+            padding:0.4rem 0.9rem;margin:0.3rem 0;color:#e8b0ca;font-size:0.88rem;">
+            {cause} — <b style="color:#f7a8c4">{cnt}</b>
+            </div>""", unsafe_allow_html=True)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -458,19 +497,19 @@ elif section == "🔬 Detailed Overview":
                                   bins=[0, 35, 45, 55, 100],
                                   labels=["<35", "35–45", "45–55", "55+"])
     age_oxy = (ascents.groupby(["AgeGroup", "Oxy"], observed=True)["Dth_num"]
-               .mean().reset_index())
-    age_oxy["Dth_num"] *= 100
+               .mean().unstack(fill_value=0) * 100)
+    # ensure both columns exist
+    for col in ["Y", "No"]:
+        if col not in age_oxy.columns:
+            age_oxy[col] = 0.0
 
-    groups    = age_oxy["AgeGroup"].unique()
-    oxy_vals  = ["Y", "No"]
-    x         = np.arange(len(groups))
-    width     = 0.35
+    groups = list(age_oxy.index)
+    x      = np.arange(len(groups))
+    width  = 0.35
 
     fig, ax = styled_fig(9, 5)
-    bars_y  = age_oxy[age_oxy["Oxy"] == "Y"]["Dth_num"].values
-    bars_no = age_oxy[age_oxy["Oxy"] == "No"]["Dth_num"].values
-    ax.bar(x - width/2, bars_y,  width, label="With oxygen",    color=PINK1)
-    ax.bar(x + width/2, bars_no, width, label="Without oxygen", color=PINK3)
+    ax.bar(x - width/2, age_oxy["Y"].values,  width, label="With oxygen",    color=PINK1)
+    ax.bar(x + width/2, age_oxy["No"].values, width, label="Without oxygen", color=PINK3)
     ax.set_xticks(x); ax.set_xticklabels(groups)
     ax.set_title("Mortality Rate by Age Group and Oxygen Use", color=PINK2)
     ax.set_xlabel("Age Group"); ax.set_ylabel("Mortality Rate (%)")
