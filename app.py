@@ -1,205 +1,165 @@
-import time
 import numpy as np
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+import seaborn as sns
 import streamlit as st
 
-st.set_page_config(
-    page_title="Everest Explorer",
-    page_icon="🏔️",
-    layout="wide",
-)
+st.set_page_config(page_title="Everest Explorer", page_icon="🏔️", layout="wide")
 
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 
-    html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
+.stApp { background-color: #1a0010; }
 
-    .stApp { background-color: #0f1117; color: #e0e0e0; }
+h1 { color: #f7a8c4 !important; font-size: 2.4rem !important; font-weight: 700 !important; }
+h2 { color: #e87fa8 !important; font-size: 1.4rem !important; font-weight: 600 !important; margin-top: 2rem !important; }
 
-    h1 { font-size: 2.6rem !important; font-weight: 700 !important;
-         background: linear-gradient(90deg, #7eb8d4, #c2e0f0);
-         -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-         margin-bottom: 0 !important; }
+.metric-card {
+    background: linear-gradient(135deg, #2d0020 0%, #3d0030 100%);
+    border: 1px solid #8b3060;
+    border-radius: 12px;
+    padding: 1.1rem 1.2rem;
+    text-align: center;
+    margin-bottom: 0.4rem;
+}
+.metric-label { font-size: 0.75rem; color: #c47a9a; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.3rem; }
+.metric-value { font-size: 1.9rem; font-weight: 700; color: #f7a8c4; }
+.metric-sub   { font-size: 0.75rem; color: #9a5a7a; margin-top: 0.2rem; }
 
-    h2 { font-size: 1.5rem !important; font-weight: 600 !important;
-         color: #a8cfe0 !important; margin-top: 2rem !important; }
+.insight-box {
+    background: #2d0020;
+    border-left: 4px solid #e05090;
+    border-radius: 0 10px 10px 0;
+    padding: 0.9rem 1.2rem;
+    margin: 1rem 0;
+    font-size: 0.9rem;
+    color: #e8b0ca;
+}
+.insight-box b { color: #f7a8c4; }
 
-    h3 { color: #7eb8d4 !important; }
+section[data-testid="stSidebar"] {
+    background: #130008 !important;
+    border-right: 1px solid #5a1040 !important;
+}
 
-    .metric-card {
-        background: linear-gradient(135deg, #1a2332 0%, #1e2d3d 100%);
-        border: 1px solid #2a3f55;
-        border-radius: 12px;
-        padding: 1.2rem 1.4rem;
-        text-align: center;
-    }
-    .metric-label { font-size: 0.78rem; color: #7a9bb5; text-transform: uppercase;
-                    letter-spacing: 0.06em; margin-bottom: 0.3rem; }
-    .metric-value { font-size: 2rem; font-weight: 700; color: #c2e0f0; }
-    .metric-sub   { font-size: 0.78rem; color: #5a8fa8; margin-top: 0.2rem; }
+hr { border-color: #3d1030 !important; margin: 1.8rem 0 !important; }
 
-    .insight-box {
-        background: #1a2230;
-        border-left: 4px solid #4c8fa8;
-        border-radius: 0 10px 10px 0;
-        padding: 0.9rem 1.2rem;
-        margin: 1rem 0;
-        font-size: 0.92rem;
-        color: #b0cfe0;
-    }
-    .insight-box b { color: #7eb8d4; }
-
-    .warn-box {
-        background: #2a1e14;
-        border-left: 4px solid #e8743b;
-        border-radius: 0 10px 10px 0;
-        padding: 0.9rem 1.2rem;
-        margin: 1rem 0;
-        font-size: 0.92rem;
-        color: #e0b898;
-    }
-
-    section[data-testid="stSidebar"] {
-        background: #0d1520;
-        border-right: 1px solid #1e2d3d;
-    }
-
-    .stRadio label, .stSelectbox label, .stSlider label {
-        color: #a8cfe0 !important;
-        font-size: 0.9rem !important;
-    }
-
-    hr { border-color: #1e2d3d !important; margin: 2rem 0 !important; }
-
-    .section-header {
-        display: flex; align-items: center; gap: 0.6rem;
-        padding: 0.5rem 0 1rem 0;
-    }
+div[data-testid="stRadio"] label, div[data-testid="stSelectbox"] label,
+div[data-testid="stSlider"] label, .stRadio p, label {
+    color: #e8b0ca !important;
+}
 </style>
 """, unsafe_allow_html=True)
+
+PINK1  = "#e05090"
+PINK2  = "#f7a8c4"
+PINK3  = "#c03070"
+LIGHT  = "#fcd5e5"
+DARK   = "#6b1040"
+BG     = "#1a0010"
+BG2    = "#2d0020"
+
+plt.rcParams.update({
+    "figure.facecolor":  BG,
+    "axes.facecolor":    BG2,
+    "axes.edgecolor":    "#5a1040",
+    "axes.labelcolor":   PINK2,
+    "xtick.color":       PINK2,
+    "ytick.color":       PINK2,
+    "text.color":        PINK2,
+    "grid.color":        "#3d1030",
+    "grid.alpha":        0.5,
+    "title.color":       PINK2,  # не работает через rcParams для ax.set_title
+})
 
 
 @st.cache_data
 def load_data():
-    ascents = pd.read_csv("Mt_Everest_Ascent_Data.csv")
-    ascents.columns = ascents.columns.str.strip()
-    ascents["Oxy_num"] = ascents["Oxy"].map({"Y": 1, "No": 0})
-    ascents["Dth_num"] = ascents["Dth"].map({"Y": 1, ".": 0})
-    ascents["Sex_num"] = ascents["Sex"].map({"M": 1, "F": 0})
-    ascents["Year"] = ascents["Yr/Seas"].str.extract(r"(\d{4})").astype(int)
-    ascents["Season"] = ascents["Yr/Seas"].str.extract(r"\s(\w+)$")
-    ascents["Decade"] = (ascents["Year"] // 10) * 10
-    ascents = ascents.dropna(subset=["Time"])
+    a = pd.read_csv("Mt_Everest_Ascent_Data.csv")
+    a.columns = a.columns.str.strip()
+    a["Oxy_num"] = a["Oxy"].map({"Y": 1, "No": 0})
+    a["Dth_num"] = a["Dth"].map({"Y": 1, ".": 0})
+    a["Sex_num"] = a["Sex"].map({"M": 1, "F": 0})
+    a["Year"]    = a["Yr/Seas"].str.extract(r"(\d{4})").astype(int)
+    a["Season"]  = a["Yr/Seas"].str.extract(r"\s(\w+)$")
+    a["Decade"]  = (a["Year"] // 10) * 10
+    a = a.dropna(subset=["Time"])
 
-    deaths = pd.read_csv("mount_everest_deaths.csv")
-    deaths.columns = deaths.columns.str.strip()
-    deaths["Year"] = deaths["Date"].str.extract(r"(\d{4})")
-    deaths = deaths.dropna(subset=["Year"])
-    deaths["Year"] = deaths["Year"].astype(int)
-    deaths["Decade"] = (deaths["Year"] // 10) * 10
-    deaths = deaths.dropna(subset=["Age", "Nationality", "Cause of death"])
-
-    def classify_cause(cause):
-        if pd.isna(cause):
-            return "Unknown"
-        text = cause.lower()
-        ext = ["avalanche", "fall", "crevasse", "serac", "ice axe",
-               "rope accident", "snowboarding", "blizzard", "snow blindness", "drown"]
-        phy = ["exhaustion", "exposure", "altitude sickness", "hape", "hace",
-               "oedema", "edema", "frostbite", "hypothermia", "heart", "cardiac",
-               "stroke", "starvation"]
-        has_ext = any(kw in text for kw in ext)
-        has_phy = any(kw in text for kw in phy)
-        if has_ext and has_phy:
-            return "Mixed"
-        elif has_ext:
-            return "External hazard"
-        elif has_phy:
-            return "Physiological"
-        elif any(w in text for w in ["disappear", "unknown", "presumed dead"]):
-            return "Unknown/Disappearance"
-        return "Other"
-
-    deaths["CauseType"] = deaths["Cause of death"].apply(classify_cause)
-    return ascents, deaths
+    d = pd.read_csv("mount_everest_deaths.csv")
+    d.columns = d.columns.str.strip()
+    d["Year"] = d["Date"].str.extract(r"(\d{4})")
+    d = d.dropna(subset=["Year"])
+    d["Year"]   = d["Year"].astype(int)
+    d["Decade"] = (d["Year"] // 10) * 10
+    d = d.dropna(subset=["Age", "Nationality", "Cause of death"])
+    return a, d
 
 
 ascents, deaths = load_data()
 
-BLUE   = "#4C8FA8"
-ORANGE = "#E8743B"
-TEAL   = "#2ec4b6"
-RED    = "#C44E52"
-GOLD   = "#f4a261"
+def styled_fig(w=10, h=5):
+    fig, ax = plt.subplots(figsize=(w, h))
+    fig.patch.set_facecolor(BG)
+    ax.set_facecolor(BG2)
+    for spine in ax.spines.values():
+        spine.set_edgecolor("#5a1040")
+    ax.tick_params(colors=PINK2)
+    ax.xaxis.label.set_color(PINK2)
+    ax.yaxis.label.set_color(PINK2)
+    return fig, ax
 
-LAYOUT = dict(
-    paper_bgcolor="rgba(0,0,0,0)",
-    plot_bgcolor="rgba(0,0,0,0)",
-    font_color="#b0c8d8",
-    title_font_color="#c2e0f0",
-    title_font_size=15,
-    margin=dict(t=50, b=30, l=10, r=10),
-)
-
-
-def apply_layout(fig, **kwargs):
-    fig.update_layout(**LAYOUT, **kwargs)
-    fig.update_xaxes(gridcolor="#1e2d3d", zerolinecolor="#1e2d3d")
-    fig.update_yaxes(gridcolor="#1e2d3d", zerolinecolor="#1e2d3d")
-    return fig
+def styled_fig2(ncols=2, w=14, h=5):
+    fig, axes = plt.subplots(1, ncols, figsize=(w, h))
+    fig.patch.set_facecolor(BG)
+    for ax in axes:
+        ax.set_facecolor(BG2)
+        for spine in ax.spines.values():
+            spine.set_edgecolor("#5a1040")
+        ax.tick_params(colors=PINK2)
+        ax.xaxis.label.set_color(PINK2)
+        ax.yaxis.label.set_color(PINK2)
+    return fig, axes
 
 
 # ── SIDEBAR ──────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("## 🏔️ Navigation")
+    st.markdown("## 🏔️ Everest Explorer")
     section = st.radio(
-        "Go to",
-        ["Overview", "Age Analysis", "Gender & Country",
-         "Oxygen & Safety", "Time Trends", "Hypotheses", "Deaths Analysis"],
+        "Section",
+        ["📊 Overview", "👤 Personal Stats", "📈 Plots", "🔬 Detailed Overview"],
         label_visibility="collapsed",
     )
     st.markdown("---")
     st.markdown("""
-    <div style="font-size:0.78rem; color:#5a8fa8; line-height:1.6;">
-    <b style="color:#7eb8d4;">Data sources</b><br>
-    • Mt Everest Ascent Data 1953–2020<br>
-      (10 184 ascents)<br>
-    • Everest Deaths since 1922<br>
-      (310 recorded fatalities)<br><br>
-    Courtesy of <a href="https://www.himalayandatabase.com" style="color:#4c8fa8;">
+    <div style="font-size:0.78rem; color:#9a5a7a; line-height:1.7;">
+    <b style="color:#e87fa8;">Data</b><br>
+    Ascent Data 1953–2020 · 10 184 rows<br>
+    Deaths since 1922 · 310 rows<br><br>
+    Source: <a href="https://www.himalayandatabase.com" style="color:#e05090;">
     The Himalayan Database</a>
-    </div>
-    """, unsafe_allow_html=True)
+    </div>""", unsafe_allow_html=True)
 
 
-# ── HEADER ───────────────────────────────────────────────────────────────────
 st.markdown("# 🏔️ Everest Explorer")
-st.markdown(
-    "<p style='color:#5a8fa8; margin-top:-0.5rem;'>"
-    "Interactive analysis of Mount Everest ascents and fatalities · 1922–2020"
-    "</p>",
-    unsafe_allow_html=True,
-)
+st.markdown("<p style='color:#9a5a7a;margin-top:-0.6rem;'>Interactive analysis of Mount Everest ascents and fatalities · 1922–2020</p>", unsafe_allow_html=True)
 st.markdown("---")
 
 
 # ═══════════════════════════════════════════════════════════════════════════
 # OVERVIEW
 # ═══════════════════════════════════════════════════════════════════════════
-if section == "Overview":
-
+if section == "📊 Overview":
     c1, c2, c3, c4, c5 = st.columns(5)
-    stats = [
-        (c1, "Total Ascents", f"{len(ascents):,}", "1953–2020"),
-        (c2, "Recorded Fatalities", f"{len(deaths):,}", "since 1922"),
-        (c3, "Years Covered", f"{ascents['Year'].max() - ascents['Year'].min()}", "years of data"),
-        (c4, "Avg Mortality Rate", f"{ascents['Dth_num'].mean()*100:.1f}%", "per ascent"),
-        (c5, "Avg Climber Age", f"{ascents['Age'].mean():.1f}", "years old"),
-    ]
-    for col, label, val, sub in stats:
+    for col, label, val, sub in [
+        (c1, "Total Ascents",      f"{len(ascents):,}",                      "1953–2020"),
+        (c2, "Fatalities",         f"{len(deaths):,}",                       "since 1922"),
+        (c3, "Years Covered",      f"{ascents['Year'].max()-ascents['Year'].min()}", "years"),
+        (c4, "Avg Mortality",      f"{ascents['Dth_num'].mean()*100:.1f}%",  "per ascent"),
+        (c5, "Avg Climber Age",    f"{ascents['Age'].mean():.1f}",           "years old"),
+    ]:
         col.markdown(f"""
         <div class="metric-card">
             <div class="metric-label">{label}</div>
@@ -207,559 +167,417 @@ if section == "Overview":
             <div class="metric-sub">{sub}</div>
         </div>""", unsafe_allow_html=True)
 
-    st.markdown("## Ascents Over Time")
+    st.markdown("---")
+
+    # 1. Line plot ascents by year
+    st.markdown("## Number of ascents on Everest")
     by_year = ascents.groupby("Year").size().reset_index(name="Ascents")
-    fig = px.area(by_year, x="Year", y="Ascents",
-                  color_discrete_sequence=[BLUE])
-    fig.update_traces(line_width=2, fillcolor="rgba(76,143,168,0.15)")
-    apply_layout(fig)
-    st.plotly_chart(fig, use_container_width=True)
+    fig, ax = styled_fig(10, 4)
+    ax.plot(by_year["Year"], by_year["Ascents"], color=PINK1, linewidth=2, marker="o", markersize=3)
+    ax.set_title("Number of ascents on Everest", color=PINK2, fontsize=13)
+    ax.set_xlabel("Year"); ax.set_ylabel("Number of Ascents")
+    ax.set_xlim(1953, 2020)
+    ax.grid(True, alpha=0.3)
+    st.pyplot(fig); plt.close()
 
-    st.markdown("""
-    <div class="insight-box">
-    <b>Key insight:</b> Ascents grew sharply after commercial expeditions opened in the 1990s.
-    The chart shows notable dips around major disasters (1996, 2014–2015) and the COVID-19 closure.
-    </div>""", unsafe_allow_html=True)
+    st.markdown("""<div class="insight-box">The number of ascents per year witnessed an upward trend from 1960, with striking fluctuations throughout — including dips after major disasters (1996, 2014–2015) and the COVID-19 closure.</div>""", unsafe_allow_html=True)
+    st.markdown("---")
 
+    # 2. Age histograms side-by-side
+    st.markdown("## Spread of alpinists by age")
+    fig, axes = styled_fig2(2, 14, 5)
+    fig.suptitle("Spread of alpinists by age", color=PINK2, fontsize=14)
+    axes[0].hist(ascents["Age"], bins=10, color=PINK1, edgecolor=BG)
+    axes[0].set_title("Age of ascenders", color=PINK2)
+    axes[0].set_xlabel("Age"); axes[0].set_ylabel("Number of climbers")
+    axes[1].hist(deaths["Age"], bins=10, color=PINK3, edgecolor=BG)
+    axes[1].set_title("Age of dead people", color=PINK2)
+    axes[1].set_xlabel("Age"); axes[1].set_ylabel("Number of Dead People")
+    plt.tight_layout()
+    st.pyplot(fig); plt.close()
+
+    st.markdown("""<div class="insight-box">Both distributions are centred around 30–40 years old.</div>""", unsafe_allow_html=True)
+    st.markdown("---")
+
+    # 3. Bar chart by sex
+    st.markdown("## Climbers by Sex")
+    sex_counts = ascents["Sex"].value_counts()
+    fig, ax = styled_fig(5, 4)
+    ax.bar(sex_counts.index, sex_counts.values, color=[PINK1, PINK3])
+    ax.set_title("Climbers by Sex", color=PINK2)
+    ax.set_ylabel("Number of climbers"); ax.set_xlabel("Sex")
+    st.pyplot(fig); plt.close()
+
+    st.markdown("""<div class="insight-box">Everest climbers are overwhelmingly male.</div>""", unsafe_allow_html=True)
+    st.markdown("---")
+
+    # 4. Pie nationality deaths
+    st.markdown("## Climbers by Nationality (fatalities)")
+    nat = deaths["Nationality"].value_counts()
+    fig, ax = plt.subplots(figsize=(8, 8))
+    fig.patch.set_facecolor(BG)
+    ax.set_facecolor(BG)
+    pinks = [PINK1, PINK3, PINK2, "#d04080", "#f0c0d8", "#a02050",
+             "#e890b8", "#b83068", "#f5b8d0", "#903058",
+             "#c06090", "#802040", "#fae0ec", "#701830", "#c8a0b8"]
+    ax.pie(nat.values, labels=nat.index, autopct="%1.1f%%",
+           colors=pinks[:len(nat)], textprops={"color": PINK2})
+    ax.set_title("Climbers by Nationality", color=PINK2)
+    st.pyplot(fig); plt.close()
+
+    st.markdown("""<div class="insight-box">Nepali climbers made up the largest single group among recorded fatalities, followed by American and Indian climbers.</div>""", unsafe_allow_html=True)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# PERSONAL STATS
+# ═══════════════════════════════════════════════════════════════════════════
+elif section == "👤 Personal Stats":
+    st.markdown("## How do you compare to Everest climbers?")
+
+    col_in, _ = st.columns([1, 2])
+    with col_in:
+        user_age  = st.slider("Your age", 16, 76, 30)
+        user_sex  = st.radio("Your sex", ["M", "F"], horizontal=True)
+        user_year = st.selectbox("Pick a year to explore",
+                                  sorted(ascents["Year"].unique()))
+
+    st.markdown("---")
+
+    # Age metrics
+    window = ascents[(ascents["Age"] >= user_age - 5) & (ascents["Age"] <= user_age + 5)]
+    mort   = window["Dth_num"].mean() * 100 if len(window) else 0
+    pct    = (ascents["Age"] <= user_age).mean() * 100
+
+    c1, c2, c3 = st.columns(3)
+    c1.markdown(f"""<div class="metric-card"><div class="metric-label">Climbers within ±5 yrs of your age</div><div class="metric-value">{len(window):,}</div></div>""", unsafe_allow_html=True)
+    c2.markdown(f"""<div class="metric-card"><div class="metric-label">Mortality rate at your age group</div><div class="metric-value">{mort:.1f}%</div></div>""", unsafe_allow_html=True)
+    c3.markdown(f"""<div class="metric-card"><div class="metric-label">You are older than</div><div class="metric-value">{pct:.0f}%</div><div class="metric-sub">of all climbers</div></div>""", unsafe_allow_html=True)
+
+    # Age histogram with user marker
+    st.markdown("## Your age vs all climbers")
+    fig, ax = styled_fig(10, 4)
+    ax.hist(ascents["Age"], bins=25, color=PINK1, edgecolor=BG, alpha=0.85)
+    ax.axvline(user_age, color=LIGHT, linewidth=3, linestyle="--",
+               label=f"You ({user_age})")
+    ax.set_title("Age Distribution of Everest Climbers", color=PINK2, fontsize=13)
+    ax.set_xlabel("Age"); ax.set_ylabel("Number of climbers")
+    ax.legend(facecolor=BG2, edgecolor=DARK, labelcolor=PINK2)
+    st.pyplot(fig); plt.close()
+
+    st.markdown("---")
+
+    # Sex comparison
+    sex_label = "Male" if user_sex == "M" else "Female"
+    sex_group = ascents[ascents["Sex"] == user_sex]
+    all_mort  = ascents["Dth_num"].mean() * 100
+    sex_mort  = sex_group["Dth_num"].mean() * 100
+    sex_pct   = len(sex_group) / len(ascents) * 100
+
+    st.markdown(f"## You as a {sex_label} climber")
+    c1, c2, c3 = st.columns(3)
+    c1.markdown(f"""<div class="metric-card"><div class="metric-label">{sex_label} climbers</div><div class="metric-value">{len(sex_group):,}</div><div class="metric-sub">{sex_pct:.1f}% of all</div></div>""", unsafe_allow_html=True)
+    c2.markdown(f"""<div class="metric-card"><div class="metric-label">{sex_label} mortality</div><div class="metric-value">{sex_mort:.2f}%</div></div>""", unsafe_allow_html=True)
+    c3.markdown(f"""<div class="metric-card"><div class="metric-label">Overall mortality</div><div class="metric-value">{all_mort:.2f}%</div></div>""", unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # Year snapshot
+    st.markdown(f"## Year {user_year} — snapshot")
+    yr_data   = ascents[ascents["Year"] == user_year]
+    yr_deaths = deaths[deaths["Year"] == user_year]
+
+    if len(yr_data) == 0:
+        st.info(f"No ascent records for {user_year}.")
+    else:
+        c1, c2, c3, c4 = st.columns(4)
+        c1.markdown(f"""<div class="metric-card"><div class="metric-label">Total ascents</div><div class="metric-value">{len(yr_data):,}</div></div>""", unsafe_allow_html=True)
+        c2.markdown(f"""<div class="metric-card"><div class="metric-label">Deaths that year</div><div class="metric-value">{len(yr_deaths):,}</div></div>""", unsafe_allow_html=True)
+        c3.markdown(f"""<div class="metric-card"><div class="metric-label">With oxygen</div><div class="metric-value">{yr_data['Oxy_num'].mean()*100:.0f}%</div></div>""", unsafe_allow_html=True)
+        c4.markdown(f"""<div class="metric-card"><div class="metric-label">Avg age</div><div class="metric-value">{yr_data['Age'].mean():.1f}</div></div>""", unsafe_allow_html=True)
+
+        # Sex bar for that year
+        fig, ax = styled_fig(5, 3)
+        yc = yr_data["Sex"].value_counts()
+        ax.bar(yc.index, yc.values, color=[PINK1, PINK3])
+        ax.set_title(f"Climbers by sex in {user_year}", color=PINK2)
+        ax.set_ylabel("Count")
+        st.pyplot(fig); plt.close()
+
+        # Age hist for year vs user
+        fig2, ax2 = styled_fig(8, 3)
+        ax2.hist(yr_data["Age"], bins=15, color=PINK3, edgecolor=BG, alpha=0.8,
+                 label=f"Climbers in {user_year}")
+        ax2.axvline(user_age, color=LIGHT, linewidth=3, linestyle="--",
+                    label=f"You ({user_age})")
+        ax2.set_title(f"Age distribution in {user_year}", color=PINK2)
+        ax2.set_xlabel("Age"); ax2.set_ylabel("Count")
+        ax2.legend(facecolor=BG2, edgecolor=DARK, labelcolor=PINK2)
+        st.pyplot(fig2); plt.close()
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# PLOTS (all notebook plots)
+# ═══════════════════════════════════════════════════════════════════════════
+elif section == "📈 Plots":
+
+    # 1. Ascents over time
+    st.markdown("## Number of ascents on Everest")
+    by_year = ascents.groupby("Year").size().reset_index(name="Ascents")
+    fig, ax = styled_fig(10, 4)
+    ax.plot(by_year["Year"], by_year["Ascents"], color=PINK1, linewidth=2, marker="o", markersize=3)
+    ax.set_title("Number of ascents on Everest", color=PINK2, fontsize=13)
+    ax.set_xlabel("Year"); ax.set_ylabel("Number of Ascents")
+    ax.set_xlim(1953, 2020); ax.grid(True, alpha=0.3)
+    st.pyplot(fig); plt.close()
+    st.markdown("""<div class="insight-box">The number of ascents per year generally witnessed an upward trend from 1960. We can observe striking fluctuations during the whole period.</div>""", unsafe_allow_html=True)
+    st.markdown("---")
+
+    # 2. Age histograms
+    st.markdown("## Spread of alpinists by age")
+    fig, axes = styled_fig2(2, 14, 5)
+    fig.suptitle("Spread of alpinists by age", color=PINK2, fontsize=14)
+    axes[0].hist(ascents["Age"], bins=10, color=PINK1, edgecolor=BG)
+    axes[0].set_title("Age of ascenders", color=PINK2)
+    axes[0].set_xlabel("Age"); axes[0].set_ylabel("Number of climbers")
+    axes[1].hist(deaths["Age"], bins=10, color=PINK3, edgecolor=BG)
+    axes[1].set_title("Age of dead people", color=PINK2)
+    axes[1].set_xlabel("Age"); axes[1].set_ylabel("Number of Dead People")
+    plt.tight_layout()
+    st.pyplot(fig); plt.close()
+    st.markdown("""<div class="insight-box">Both distributions are centred around 30–40 years old.</div>""", unsafe_allow_html=True)
+    st.markdown("---")
+
+    # 3. Bar climbers by sex
+    st.markdown("## Climbers by Sex")
+    sex_counts = ascents["Sex"].value_counts()
+    fig, ax = styled_fig(5, 4)
+    ax.bar(sex_counts.index, sex_counts.values, color=[PINK1, PINK3])
+    ax.set_title("Climbers by Sex", color=PINK2)
+    ax.set_ylabel("Number of climbers"); ax.set_xlabel("Sex")
+    st.pyplot(fig); plt.close()
+    st.markdown("""<div class="insight-box">The bar chart confirms that Everest climbers are overwhelmingly male.</div>""", unsafe_allow_html=True)
+    st.markdown("---")
+
+    # 4. Pie nationality deaths
+    st.markdown("## Climbers by Nationality (fatalities)")
+    nat = deaths["Nationality"].value_counts()
+    fig, ax = plt.subplots(figsize=(8, 8))
+    fig.patch.set_facecolor(BG); ax.set_facecolor(BG)
+    pinks = [PINK1, PINK3, PINK2, "#d04080", "#f0c0d8", "#a02050",
+             "#e890b8", "#b83068", "#f5b8d0", "#903058",
+             "#c06090", "#802040", "#fae0ec", "#701830", "#c8a0b8"]
+    ax.pie(nat.values, labels=nat.index, autopct="%1.1f%%",
+           colors=pinks[:len(nat)], textprops={"color": PINK2})
+    ax.set_title("Climbers by Nationality", color=PINK2)
+    st.pyplot(fig); plt.close()
+    st.markdown("""<div class="insight-box">Nepali climbers made up the largest single group among recorded fatalities, followed by American and Indian climbers.</div>""", unsafe_allow_html=True)
+    st.markdown("---")
+
+    # 5. Top 10 countries ascents + top causes death
+    st.markdown("## Top countries by ascents vs top causes of death")
+    fig, axes = styled_fig2(2, 16, 7)
+    fig.suptitle("Everest: top countries by ascents vs. top causes of death",
+                 color=PINK2, fontsize=16, fontweight="bold")
+
+    top_c = ascents["Citizenship"].value_counts().head(10).sort_values()
+    axes[0].barh(top_c.index, top_c.values, color=PINK1)
+    axes[0].set_title("Top 10 countries by ascents", color=PINK2)
+    axes[0].grid(axis="x", alpha=0.3)
+
+    dc = deaths["Cause of death"].value_counts().head(7).sort_values()
+    bars = axes[1].barh(dc.index, dc.values, color=PINK3)
+    axes[1].set_title("Top causes of death", color=PINK2)
+    axes[1].grid(axis="x", alpha=0.3)
+    for bar in bars:
+        axes[1].text(bar.get_width() + 0.1, bar.get_y() + bar.get_height() / 2,
+                     str(int(bar.get_width())), va="center", color=PINK2)
+    plt.tight_layout()
+    st.pyplot(fig); plt.close()
+    st.markdown("---")
+
+    # 6. Overlay age histograms
+    st.markdown("## Age Distribution: Ascenders vs Fatalities")
+    fig, ax = styled_fig(9, 5)
+    ax.hist(ascents["Age"].dropna(), bins=10, alpha=1, label="All climbers",
+            color=PINK1, edgecolor=BG)
+    ax.hist(deaths["Age"].dropna(), bins=10, alpha=1, label="Climbers who died",
+            color=PINK3, edgecolor=BG)
+    ax.set_title("Age Distribution Comparison of Ascenders and dead people", color=PINK2)
+    ax.set_xlabel("Age"); ax.set_ylabel("Count")
+    ax.legend(facecolor=BG2, edgecolor=DARK, labelcolor=PINK2)
+    st.pyplot(fig); plt.close()
+    st.markdown("---")
+
+    # 7. Ascents vs Deaths by decade
     st.markdown("## Ascents vs Deaths by Decade")
     asc_d = ascents[ascents["Year"] >= 1953].groupby("Decade").size()
     dth_d = deaths[deaths["Year"] >= 1953].groupby("Decade").size()
     decades = sorted(set(asc_d.index) | set(dth_d.index))
-    asc_plot = asc_d.reindex(decades, fill_value=0)
-    dth_plot = dth_d.reindex(decades, fill_value=0)
-    mortality_d = (dth_plot / asc_plot * 100).replace([np.inf, -np.inf], np.nan).fillna(0)
+    asc_p = asc_d.reindex(decades, fill_value=0)
+    dth_p = dth_d.reindex(decades, fill_value=0)
+    mort_r = (dth_p / asc_p * 100).replace([np.inf, -np.inf], np.nan).fillna(0)
 
-    fig2 = go.Figure()
-    fig2.add_trace(go.Bar(x=[str(d) for d in decades], y=asc_plot.values,
-                          name="Ascents", marker_color=BLUE, opacity=0.7, yaxis="y1"))
-    fig2.add_trace(go.Scatter(x=[str(d) for d in decades], y=mortality_d.values,
-                               name="Mortality %", marker_color=ORANGE,
-                               mode="lines+markers", line=dict(width=3), yaxis="y2"))
-    apply_layout(fig2,
-        yaxis=dict(title="Number of ascents", gridcolor="#1e2d3d"),
-        yaxis2=dict(title="Mortality rate (%)", overlaying="y", side="right",
-                    gridcolor="#1e2d3d"),
-        legend=dict(orientation="h", y=1.1),
-        title="Ascents (bars) vs Mortality rate % (line) by decade",
-    )
-    st.plotly_chart(fig2, use_container_width=True)
+    fig, axes = styled_fig2(2, 14, 5)
+    x = np.arange(len(decades))
+    axes[0].bar(x - 0.2, asc_p.values, width=0.4, label="Ascents", color=PINK1)
+    axes[0].bar(x + 0.2, dth_p.values, width=0.4, label="Deaths", color=PINK3)
+    axes[0].set_xticks(x); axes[0].set_xticklabels(decades)
+    axes[0].set_title("Ascents vs Deaths by Decade", color=PINK2)
+    axes[0].legend(facecolor=BG2, edgecolor=DARK, labelcolor=PINK2)
 
-    st.markdown("""
-    <div class="insight-box">
-    <b>Key insight:</b> Mortality rate peaked at ~17.6% in the 1980s and fell to ~2.8% by the 2010s,
-    even as annual ascent numbers hit record highs. Better gear, weather forecasting, and
-    commercialisation of logistics drove this improvement.
-    The 2020 data point (22.7%) is statistical noise — only 22 ascents were recorded before COVID closed the mountain.
-    </div>""", unsafe_allow_html=True)
+    axes[1].bar(x, mort_r.values, color=PINK3)
+    axes[1].set_xticks(x); axes[1].set_xticklabels(decades)
+    axes[1].set_title("Mortality Rate (%) by Decade", color=PINK2)
+    axes[1].set_ylabel("Mortality %")
+    plt.tight_layout()
+    st.pyplot(fig); plt.close()
+    st.markdown("---")
+
+    # 8. Oxygen vs non-oxygen time series
+    st.markdown("## Oxygen vs Non-Oxygen Ascents Over Time")
+    oxy_ts = ascents.groupby(["Year", "Oxy"]).size().unstack(fill_value=0)
+    fig, ax = styled_fig(10, 4)
+    if "Y" in oxy_ts.columns:
+        ax.plot(oxy_ts.index, oxy_ts["Y"],  color=PINK1, linewidth=2, marker="o", markersize=3, label="With oxygen")
+    if "No" in oxy_ts.columns:
+        ax.plot(oxy_ts.index, oxy_ts["No"], color=PINK3, linewidth=2, marker="o", markersize=3, label="Without oxygen")
+    ax.set_title("Oxygen vs Non-Oxygen Ascents Over Time", color=PINK2)
+    ax.set_xlabel("Year"); ax.set_ylabel("Number of Ascents")
+    ax.legend(facecolor=BG2, edgecolor=DARK, labelcolor=PINK2)
+    ax.grid(True, alpha=0.3)
+    st.pyplot(fig); plt.close()
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# AGE ANALYSIS
+# DETAILED OVERVIEW
 # ═══════════════════════════════════════════════════════════════════════════
-elif section == "Age Analysis":
-    st.markdown("## Age Distribution")
+elif section == "🔬 Detailed Overview":
 
-    col_a, col_b = st.columns([1, 2])
-    with col_a:
-        age = st.slider("Your age", int(ascents["Age"].min()), int(ascents["Age"].max()), 35)
-        window = ascents[(ascents["Age"] >= age - 5) & (ascents["Age"] <= age + 5)]
-        mort = window["Dth_num"].mean() * 100 if len(window) else 0
-        pct  = (ascents["Age"] <= age).mean() * 100
-
-        st.markdown(f"""
-        <div class="metric-card" style="margin-bottom:0.8rem">
-            <div class="metric-label">Climbers within ±5 years</div>
-            <div class="metric-value">{len(window):,}</div>
-        </div>
-        <div class="metric-card" style="margin-bottom:0.8rem">
-            <div class="metric-label">Mortality Rate at this age</div>
-            <div class="metric-value">{mort:.1f}%</div>
-        </div>
-        <div class="metric-card">
-            <div class="metric-label">Older than</div>
-            <div class="metric-value">{pct:.0f}%</div>
-            <div class="metric-sub">of all climbers</div>
-        </div>""", unsafe_allow_html=True)
-
-    with col_b:
-        fig = px.histogram(ascents, x="Age", nbins=30,
-                           title="Age Distribution — All Climbers",
-                           color_discrete_sequence=[BLUE])
-        fig.add_vline(x=age, line_color=ORANGE, line_width=3,
-                      annotation_text=f"You ({age})", annotation_position="top")
-        apply_layout(fig)
-        st.plotly_chart(fig, use_container_width=True)
-
-    st.markdown("## Age: Climbers vs Fatalities (Overlay)")
-    fig2 = go.Figure()
-    fig2.add_trace(go.Histogram(x=ascents["Age"].dropna(), name="All climbers",
-                                marker_color=BLUE, opacity=0.6, nbinsx=20))
-    fig2.add_trace(go.Histogram(x=deaths["Age"].dropna(), name="Fatal cases",
-                                marker_color=ORANGE, opacity=0.75, nbinsx=20))
-    apply_layout(fig2, barmode="overlay",
-                 title="Age distribution: all climbers vs fatal cases",
-                 xaxis_title="Age", yaxis_title="Count")
-    st.plotly_chart(fig2, use_container_width=True)
-
-    st.markdown("""
-    <div class="insight-box">
-    <b>Key insight:</b> Both distributions peak in the 30–40 age range.
-    Deaths skew slightly older, partly because physiological causes (altitude sickness, heart issues)
-    become more prevalent with age.
-    </div>""", unsafe_allow_html=True)
-
-    st.markdown("## Mortality Rate by Age Group")
+    st.markdown("## H1 · Oxygen and Mortality by Age Group")
     ascents["AgeGroup"] = pd.cut(ascents["Age"],
-                                  bins=[0, 30, 40, 50, 60, 100],
-                                  labels=["<30", "30–40", "40–50", "50–60", "60+"])
-    age_mort = ascents.groupby("AgeGroup", observed=True)["Dth_num"].mean() * 100
-    fig3 = px.bar(age_mort.reset_index(), x="AgeGroup", y="Dth_num",
-                  color="Dth_num", color_continuous_scale=[[0, BLUE], [1, ORANGE]],
-                  title="Mortality Rate (%) by Age Group",
-                  labels={"Dth_num": "Mortality %", "AgeGroup": "Age group"})
-    apply_layout(fig3)
-    fig3.update_coloraxes(showscale=False)
-    st.plotly_chart(fig3, use_container_width=True)
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# GENDER & COUNTRY
-# ═══════════════════════════════════════════════════════════════════════════
-elif section == "Gender & Country":
-    st.markdown("## Climbers by Gender")
-
-    sex_counts = ascents["Sex"].value_counts().reset_index()
-    sex_counts.columns = ["Sex", "Count"]
-
-    col1, col2 = st.columns(2)
-    with col1:
-        fig = px.pie(sex_counts, names="Sex", values="Count", hole=0.55,
-                     color_discrete_sequence=[BLUE, ORANGE],
-                     title="Share of Male vs Female climbers")
-        apply_layout(fig)
-        st.plotly_chart(fig, use_container_width=True)
-
-    with col2:
-        sex_mort = ascents.groupby("Sex")["Dth_num"].mean() * 100
-        fig2 = px.bar(sex_mort.reset_index(), x="Sex", y="Dth_num",
-                      color="Sex", color_discrete_sequence=[BLUE, ORANGE],
-                      title="Mortality Rate (%) by Gender",
-                      labels={"Dth_num": "Mortality %"}, text_auto=".2f")
-        apply_layout(fig2)
-        fig2.update_layout(showlegend=False)
-        st.plotly_chart(fig2, use_container_width=True)
-
-    st.markdown("## 🌍 Top Countries by Ascents")
-    n_countries = st.slider("Number of countries to show", 5, 20, 12)
-    top_c = (ascents["Citizenship"].value_counts()
-             .head(n_countries).reset_index())
-    top_c.columns = ["Country", "Ascents"]
-
-    col_v = st.radio("Chart type", ["Horizontal bar", "Bubble"], horizontal=True)
-    if col_v == "Horizontal bar":
-        fig3 = px.bar(top_c.sort_values("Ascents"), x="Ascents", y="Country",
-                      orientation="h", color="Ascents",
-                      color_continuous_scale=[[0, "#1e3a4a"], [1, BLUE]],
-                      title=f"Top {n_countries} Countries by Ascents")
-        apply_layout(fig3)
-        fig3.update_coloraxes(showscale=False)
-        st.plotly_chart(fig3, use_container_width=True)
-    else:
-        rng = np.random.default_rng(42)
-        top_c["x"] = rng.uniform(0, 10, len(top_c))
-        top_c["y"] = rng.uniform(0, 10, len(top_c))
-        fig3 = px.scatter(top_c, x="x", y="y", size="Ascents", color="Country",
-                          text="Country", size_max=80,
-                          title=f"Top {n_countries} Countries — Bubble view")
-        fig3.update_traces(textposition="middle center", textfont_size=11)
-        fig3.update_xaxes(visible=False)
-        fig3.update_yaxes(visible=False)
-        apply_layout(fig3, showlegend=False, height=500)
-        st.plotly_chart(fig3, use_container_width=True)
-
-    st.markdown("## Mortality Rate by Country (Top 10 by ascents)")
-    top10 = ascents["Citizenship"].value_counts().head(10).index
-    c_mort = (ascents[ascents["Citizenship"].isin(top10)]
-              .groupby("Citizenship")["Dth_num"].mean() * 100
-              .sort_values(ascending=False).reset_index())
-    c_mort.columns = ["Country", "Mortality %"]
-    fig4 = px.bar(c_mort, x="Country", y="Mortality %",
-                  color="Mortality %",
-                  color_continuous_scale=[[0, BLUE], [1, RED]],
-                  title="Mortality Rate (%) — Top 10 Countries by ascents",
-                  text_auto=".2f")
-    apply_layout(fig4)
-    fig4.update_coloraxes(showscale=False)
-    st.plotly_chart(fig4, use_container_width=True)
-
-    st.markdown("## Deaths by Nationality")
-    nat = deaths["Nationality"].value_counts().head(10).reset_index()
-    nat.columns = ["Nationality", "Deaths"]
-    fig5 = px.bar(nat, x="Deaths", y="Nationality", orientation="h",
-                  color="Deaths",
-                  color_continuous_scale=[[0, "#2a1a14"], [1, ORANGE]],
-                  title="Top 10 Nationalities among recorded fatalities")
-    apply_layout(fig5)
-    fig5.update_coloraxes(showscale=False)
-    st.plotly_chart(fig5, use_container_width=True)
-
-    st.markdown("""
-    <div class="insight-box">
-    <b>Key insight:</b> Nepali climbers (mostly Sherpa guides) make up the largest single group
-    among recorded fatalities, reflecting their disproportionately high exposure on the mountain.
-    </div>""", unsafe_allow_html=True)
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# OXYGEN & SAFETY
-# ═══════════════════════════════════════════════════════════════════════════
-elif section == "Oxygen & Safety":
-    st.markdown("## Supplemental Oxygen and Mortality")
-
-    oxy_choice = st.radio("Select climbing style:",
-                          ["With Oxygen (Y)", "Without Oxygen (No)"],
-                          horizontal=True)
-    oxy_val = "Y" if "With" in oxy_choice else "No"
-    subset_oxy = ascents[ascents["Oxy"] == oxy_val]
-    rate = subset_oxy["Dth_num"].mean() * 100
-
-    c1, c2 = st.columns([1, 2])
-    with c1:
-        st.markdown(f"""
-        <div class="metric-card" style="margin-bottom:0.8rem">
-            <div class="metric-label">Ascents in this group</div>
-            <div class="metric-value">{len(subset_oxy):,}</div>
-        </div>
-        <div class="metric-card">
-            <div class="metric-label">Mortality Rate</div>
-            <div class="metric-value">{rate:.2f}%</div>
-        </div>""", unsafe_allow_html=True)
-
-    with c2:
-        compare = ascents.groupby("Oxy")["Dth_num"].mean().reset_index()
-        compare["Dth_num"] *= 100
-        compare["Highlight"] = compare["Oxy"].apply(
-            lambda x: "Selected" if x == oxy_val else "Other")
-        fig = px.bar(compare, x="Oxy", y="Dth_num",
-                     color="Highlight",
-                     color_discrete_map={"Selected": ORANGE, "Other": BLUE},
-                     title="Mortality Rate — With vs Without Oxygen",
-                     labels={"Dth_num": "Mortality %", "Oxy": "Oxygen"},
-                     text_auto=".2f")
-        apply_layout(fig, showlegend=False)
-        st.plotly_chart(fig, use_container_width=True)
-
-    st.markdown("## Oxygen Use Over Time")
-    oxy_year = (ascents.groupby("Year")["Oxy_num"].mean() * 100).reset_index()
-    oxy_year.columns = ["Year", "Oxygen use %"]
-    fig2 = px.line(oxy_year, x="Year", y="Oxygen use %",
-                   title="Supplemental Oxygen Usage Rate Over Years (%)",
-                   color_discrete_sequence=[TEAL])
-    fig2.update_traces(line_width=2)
-    apply_layout(fig2)
-    st.plotly_chart(fig2, use_container_width=True)
-
-    st.markdown("## Oxygen × Age Group: Mortality Breakdown")
-    ascents["AgeGroup"] = pd.cut(ascents["Age"],
-                                  bins=[0, 30, 40, 50, 60, 100],
-                                  labels=["<30", "30–40", "40–50", "50–60", "60+"])
+                                  bins=[0, 35, 45, 55, 100],
+                                  labels=["<35", "35–45", "45–55", "55+"])
     age_oxy = (ascents.groupby(["AgeGroup", "Oxy"], observed=True)["Dth_num"]
                .mean().reset_index())
     age_oxy["Dth_num"] *= 100
-    fig3 = px.bar(age_oxy, x="AgeGroup", y="Dth_num", color="Oxy",
-                  barmode="group",
-                  color_discrete_map={"Y": BLUE, "No": ORANGE},
-                  title="Mortality Rate (%) by Age Group & Oxygen Use",
-                  labels={"Dth_num": "Mortality %", "AgeGroup": "Age group",
-                          "Oxy": "Oxygen"})
-    apply_layout(fig3)
-    st.plotly_chart(fig3, use_container_width=True)
 
-    st.markdown("""
-    <div class="insight-box">
-    <b>Key insight:</b> Oxygen dramatically reduces mortality across all age groups.
-    For climbers under 55, mortality drops from ~6–7% without oxygen to under 1% with it.
-    Older climbers who attempt the summit without supplemental oxygen face substantially higher risk.
-    </div>""", unsafe_allow_html=True)
+    groups    = age_oxy["AgeGroup"].unique()
+    oxy_vals  = ["Y", "No"]
+    x         = np.arange(len(groups))
+    width     = 0.35
 
+    fig, ax = styled_fig(9, 5)
+    bars_y  = age_oxy[age_oxy["Oxy"] == "Y"]["Dth_num"].values
+    bars_no = age_oxy[age_oxy["Oxy"] == "No"]["Dth_num"].values
+    ax.bar(x - width/2, bars_y,  width, label="With oxygen",    color=PINK1)
+    ax.bar(x + width/2, bars_no, width, label="Without oxygen", color=PINK3)
+    ax.set_xticks(x); ax.set_xticklabels(groups)
+    ax.set_title("Mortality Rate by Age Group and Oxygen Use", color=PINK2)
+    ax.set_xlabel("Age Group"); ax.set_ylabel("Mortality Rate (%)")
+    ax.legend(facecolor=BG2, edgecolor=DARK, labelcolor=PINK2)
+    plt.tight_layout()
+    st.pyplot(fig); plt.close()
+    st.markdown("""<div class="insight-box"><b>Conclusion:</b> Mortality rates were significantly lower for climbers using supplemental oxygen. For climbers under 55, mortality dropped from 6–7% without oxygen to under 1% with it.</div>""", unsafe_allow_html=True)
+    st.markdown("---")
 
-# ═══════════════════════════════════════════════════════════════════════════
-# TIME TRENDS
-# ═══════════════════════════════════════════════════════════════════════════
-elif section == "Time Trends":
-    st.markdown("## Ascents by Gender Over the Years")
+    # H2: Mortality rate fell while ascents rose
+    st.markdown("## H2 · Ascents (bars) vs Mortality rate (line) by decade")
+    import plotly.graph_objects as go
+    asc_d  = ascents[ascents["Year"] >= 1953].groupby("Decade").size()
+    dth_d  = deaths[deaths["Year"] >= 1953].groupby("Decade").size()
+    decades = sorted(set(asc_d.index) | set(dth_d.index))
+    asc_p  = asc_d.reindex(decades, fill_value=0)
+    dth_p  = dth_d.reindex(decades, fill_value=0)
+    mort_r = (dth_p / asc_p * 100).replace([np.inf, -np.inf], np.nan).fillna(0)
 
-    by_year_sex = (ascents.groupby(["Year", "Sex"]).size()
-                   .reset_index(name="Climbers"))
-    fig = px.bar(by_year_sex, x="Year", y="Climbers", color="Sex",
-                 color_discrete_sequence=[BLUE, ORANGE],
-                 title="Male and Female Climbers by Year")
-    apply_layout(fig)
-    st.plotly_chart(fig, use_container_width=True)
-
-    st.markdown("## Season Distribution")
-    season_counts = ascents["Season"].value_counts().reset_index()
-    season_counts.columns = ["Season", "Count"]
-    fig2 = px.pie(season_counts, names="Season", values="Count", hole=0.5,
-                  title="Ascents by Season",
-                  color_discrete_sequence=[BLUE, ORANGE, TEAL, GOLD])
-    apply_layout(fig2)
-    st.plotly_chart(fig2, use_container_width=True)
-
-    st.markdown("## Mortality Rate Over Time (5-year rolling)")
-    mort_yr = ascents.groupby("Year")["Dth_num"].mean() * 100
-    mort_roll = mort_yr.rolling(5, center=True).mean().reset_index()
-    mort_roll.columns = ["Year", "Mortality %"]
-    fig3 = px.line(mort_roll, x="Year", y="Mortality %",
-                   title="5-Year Rolling Mortality Rate (%)",
-                   color_discrete_sequence=[ORANGE])
-    fig3.update_traces(line_width=2.5)
-    apply_layout(fig3)
-    st.plotly_chart(fig3, use_container_width=True)
-
-    st.markdown("## Nepal vs China/Tibet Routes Over Time")
-    side_decade = ascents.groupby(["Decade", "Host"]).size().unstack(fill_value=0)
-    fig4 = go.Figure()
-    colors_side = [BLUE, ORANGE]
-    for i, host in enumerate(side_decade.columns):
-        fig4.add_trace(go.Scatter(x=side_decade.index.astype(str),
-                                   y=side_decade[host],
-                                   mode="lines+markers", name=host,
-                                   line=dict(color=colors_side[i % 2], width=2.5)))
-    apply_layout(fig4, title="Ascents by Decade: Nepal vs China/Tibet",
-                 xaxis_title="Decade", yaxis_title="Ascents")
-    st.plotly_chart(fig4, use_container_width=True)
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# HYPOTHESES
-# ═══════════════════════════════════════════════════════════════════════════
-elif section == "Hypotheses":
-    hypo = st.selectbox(
-        "Select hypothesis",
-        [
-            "H1: Oxygen halves mortality across all ages",
-            "H2: Mortality rate fell while ascents rose",
-            "H3: Younger climbers die from hazards, older from physiology",
-            "H4: Nepal side more dangerous than China/Tibet side",
-        ]
+    fig_p = go.Figure()
+    fig_p.add_trace(go.Bar(x=[str(d) for d in decades], y=asc_p.values,
+                           name="Ascents", marker_color=PINK1, opacity=0.7, yaxis="y1"))
+    fig_p.add_trace(go.Scatter(x=[str(d) for d in decades], y=mort_r.values,
+                                name="Mortality %", marker_color=LIGHT,
+                                mode="lines+markers", line=dict(width=3), yaxis="y2"))
+    fig_p.update_layout(
+        paper_bgcolor=BG, plot_bgcolor=BG2, font_color=PINK2,
+        title=dict(text="Ascents (bars) vs. Mortality rate (line) by decade", font_color=PINK2),
+        yaxis=dict(title="Number of ascents", gridcolor="#3d1030"),
+        yaxis2=dict(title="Mortality rate (%)", overlaying="y", side="right", gridcolor="#3d1030"),
+        legend=dict(orientation="h", y=1.1, bgcolor=BG2, bordercolor=DARK),
+        margin=dict(t=60, b=30),
     )
+    st.plotly_chart(fig_p, use_container_width=True)
+    st.markdown("""<div class="insight-box"><b>Conclusion:</b> From 1950s to 1990s mortality rate was higher. It peaked at 17.65% in 1980, then dropped to 2.76% in 2010s — despite record-high ascent numbers. The 2020 data point is statistical noise (only 22 ascents before COVID).</div>""", unsafe_allow_html=True)
+    st.markdown("---")
 
-    if "H1" in hypo:
-        st.markdown("## H1: Oxygen halves mortality across all ages")
-        ascents["AgeGroup"] = pd.cut(ascents["Age"],
-                                      bins=[0, 30, 40, 50, 60, 100],
-                                      labels=["<30", "30–40", "40–50", "50–60", "60+"])
-        age_oxy = (ascents.groupby(["AgeGroup", "Oxy"], observed=True)["Dth_num"]
-                   .mean().reset_index())
-        age_oxy["Dth_num"] *= 100
-        fig = px.bar(age_oxy, x="AgeGroup", y="Dth_num", color="Oxy",
-                     barmode="group",
-                     color_discrete_map={"Y": BLUE, "No": ORANGE},
-                     title="Mortality Rate (%) by Age Group and Oxygen Use",
-                     labels={"Dth_num": "Mortality %", "AgeGroup": "Age group",
-                             "Oxy": "Oxygen use"})
-        apply_layout(fig)
-        st.plotly_chart(fig, use_container_width=True)
-        st.markdown("""
-        <div class="insight-box">
-        <b>✅ Hypothesis supported.</b> For climbers under 55, mortality drops from 6–7% (no oxygen)
-        to under 1% (with oxygen). Oxygen deprivation mortality increases slightly with age (6.6% → 7.1%),
-        but the protective effect of supplemental oxygen is consistent across all age groups.
-        </div>""", unsafe_allow_html=True)
+    # H3: External vs Physiological
+    st.markdown("## H3 · Age by Cause-of-Death Type")
+    def classify_cause(cause):
+        if pd.isna(cause): return "Unknown"
+        t = cause.lower()
+        ext = ["avalanche","fall","crevasse","serac","ice axe","rope accident","snowboarding","blizzard","snow blindness","drown"]
+        phy = ["exhaustion","exposure","altitude sickness","hape","hace","oedema","edema","frostbite","hypothermia","heart","cardiac","stroke","starvation"]
+        he, hp = any(k in t for k in ext), any(k in t for k in phy)
+        if he and hp: return "Mixed"
+        if he: return "External hazard"
+        if hp: return "Physiological"
+        if any(w in t for w in ["disappear","unknown","presumed dead"]): return "Unknown/Disappearance"
+        return "Other"
+    deaths["CauseType"] = deaths["Cause of death"].apply(classify_cause)
 
-    elif "H2" in hypo:
-        st.markdown("## H2: Mortality fell while ascents rose")
-        asc_d = ascents[ascents["Year"] >= 1953].groupby("Decade").size()
-        dth_d = deaths[deaths["Year"] >= 1953].groupby("Decade").size()
-        decades = sorted(set(asc_d.index) | set(dth_d.index))
-        asc_plot = asc_d.reindex(decades, fill_value=0)
-        dth_plot = dth_d.reindex(decades, fill_value=0)
-        mort_rate = (dth_plot / asc_plot * 100).replace([np.inf, -np.inf], np.nan).fillna(0)
+    subset3 = deaths[deaths["CauseType"].isin(["External hazard", "Physiological"])]
+    fig, ax = styled_fig(9, 5)
+    for ct, col in [("External hazard", PINK1), ("Physiological", PINK3)]:
+        ages = subset3[subset3["CauseType"] == ct]["Age"]
+        ax.hist(ages, bins=10, alpha=0.55, label=f"{ct} (n={len(ages)})",
+                color=col, edgecolor=BG)
+        ax.axvline(ages.mean(), linestyle="--", color=col, linewidth=2,
+                   label=f"mean={ages.mean():.1f}")
+    ax.set_title("Age distribution by cause-of-death type", color=PINK2)
+    ax.set_xlabel("Age"); ax.set_ylabel("Count")
+    ax.legend(facecolor=BG2, edgecolor=DARK, labelcolor=PINK2)
+    st.pyplot(fig); plt.close()
 
-        fig = go.Figure()
-        fig.add_trace(go.Bar(x=[str(d) for d in decades], y=asc_plot.values,
-                             name="Ascents", marker_color=BLUE, opacity=0.6, yaxis="y1"))
-        fig.add_trace(go.Scatter(x=[str(d) for d in decades], y=mort_rate.values,
-                                  name="Mortality %", marker_color=ORANGE,
-                                  mode="lines+markers", line=dict(width=3), yaxis="y2"))
-        apply_layout(fig,
-            yaxis=dict(title="Ascents", gridcolor="#1e2d3d"),
-            yaxis2=dict(title="Mortality %", overlaying="y", side="right"),
-            legend=dict(orientation="h", y=1.1),
-            title="Ascents vs Mortality Rate by Decade",
-        )
-        st.plotly_chart(fig, use_container_width=True)
+    age_stats = subset3.groupby("CauseType")["Age"].agg(["mean","median","std","count"])
+    diff = age_stats.loc["Physiological","mean"] - age_stats.loc["External hazard","mean"]
+    st.markdown(f"""<div class="insight-box"><b>Conclusion:</b> Climbers who died from external hazards were on average <b>{diff:.1f} years younger</b>. std=12.43 vs 9.57 — among those dying from altitude/heart causes the age range is wider.</div>""", unsafe_allow_html=True)
+    st.markdown("---")
 
-        early = mort_rate[mort_rate.index < 1990].mean()
-        late  = mort_rate[(mort_rate.index >= 1990) & (mort_rate.index < 2020)].mean()
-        col1, col2 = st.columns(2)
-        col1.markdown(f"""
-        <div class="metric-card">
-            <div class="metric-label">Avg mortality before 1990</div>
-            <div class="metric-value">{early:.2f}%</div>
-        </div>""", unsafe_allow_html=True)
-        col2.markdown(f"""
-        <div class="metric-card">
-            <div class="metric-label">Avg mortality 1990–2010s</div>
-            <div class="metric-value">{late:.2f}%</div>
-        </div>""", unsafe_allow_html=True)
-        st.markdown("""
-        <div class="insight-box">
-        <b>✅ Hypothesis supported.</b> Mortality peaked at ~17.6% in the 1980s and fell to ~2.8%
-        by the 2010s — the decade with the highest absolute number of ascents.
-        Better equipment, forecasting, and commercial logistics drove this improvement.
-        </div>""", unsafe_allow_html=True)
+    # H4: Nepal vs China
+    st.markdown("## H4 · Nepal vs China/Tibet: Mortality & Oxygen")
+    host_comp = ascents.groupby("Host").agg(
+        MortalityRate=("Dth_num", "mean"),
+        OxygenUseRate=("Oxy_num", "mean"),
+        Ascents=("Dth_num", "size"),
+        MeanAge=("Age", "mean"),
+    )
+    host_comp[["MortalityRate","OxygenUseRate"]] *= 100
 
-    elif "H3" in hypo:
-        st.markdown("## H3: Younger climbers die from hazards, older from physiology")
-        subset_h3 = deaths[deaths["CauseType"].isin(["External hazard", "Physiological"])]
-        fig = go.Figure()
-        color_map = {"External hazard": BLUE, "Physiological": ORANGE}
-        for ct, col in color_map.items():
-            ages = subset_h3[subset_h3["CauseType"] == ct]["Age"]
-            fig.add_trace(go.Histogram(x=ages, name=f"{ct} (n={len(ages)})",
-                                        marker_color=col, opacity=0.6, nbinsx=12))
-            fig.add_vline(x=ages.mean(), line_dash="dash", line_color=col,
-                          annotation_text=f"mean={ages.mean():.1f}")
-        apply_layout(fig, barmode="overlay",
-                     title="Age distribution by cause-of-death type",
-                     xaxis_title="Age", yaxis_title="Count")
-        st.plotly_chart(fig, use_container_width=True)
+    fig, axes = styled_fig2(2, 13, 5)
+    hosts = host_comp.index.tolist()
+    x = np.arange(len(hosts)); w = 0.35
+    axes[0].bar(x - w/2, host_comp["MortalityRate"].values, w, label="Mortality %", color="#c03070")
+    axes[0].bar(x + w/2, host_comp["OxygenUseRate"].values,  w, label="Oxygen use %", color=PINK1)
+    axes[0].set_xticks(x); axes[0].set_xticklabels(hosts)
+    axes[0].set_title("Nepal vs China/Tibet: mortality & oxygen use", color=PINK2)
+    axes[0].set_ylabel("%")
+    axes[0].legend(facecolor=BG2, edgecolor=DARK, labelcolor=PINK2)
 
-        age_stats = subset_h3.groupby("CauseType")["Age"].agg(["mean", "median", "std", "count"])
-        st.dataframe(age_stats.round(2).style.background_gradient(
-            cmap="Blues", axis=None), use_container_width=True)
+    pinks2 = [PINK1, PINK3]
+    axes[1].pie(host_comp["Ascents"].values, labels=hosts, autopct="%1.1f%%",
+                colors=pinks2, textprops={"color": PINK2})
+    axes[1].set_title("Share of ascents: Nepal vs China/Tibet", color=PINK2)
+    plt.tight_layout()
+    st.pyplot(fig); plt.close()
 
-        diff = age_stats.loc["Physiological", "mean"] - age_stats.loc["External hazard", "mean"]
-        st.markdown(f"""
-        <div class="insight-box">
-        <b>✅ Hypothesis supported.</b> Climbers dying from external hazards (falls, avalanches)
-        were on average <b style="color:{ORANGE}">{diff:.1f} years younger</b> than those dying from
-        physiological causes. The wider std for physiological deaths (12.4 vs 9.6 years) reflects that
-        altitude-induced conditions can strike both young predisposed climbers and older ones with
-        limited physiological reserve.
-        </div>""", unsafe_allow_html=True)
+    side_decade = ascents.groupby(["Decade","Host"]).size().unstack(fill_value=0)
+    fig, ax = styled_fig(10, 4)
+    for i, host in enumerate(side_decade.columns):
+        ax.plot(side_decade.index.astype(str), side_decade[host],
+                marker="o", markersize=4, linewidth=2,
+                color=[PINK1, PINK3][i % 2], label=host)
+    ax.set_title("Ascents by decade: Nepal side vs China/Tibet side", color=PINK2)
+    ax.set_xlabel("Decade"); ax.set_ylabel("Ascents")
+    ax.legend(facecolor=BG2, edgecolor=DARK, labelcolor=PINK2)
+    ax.grid(True, alpha=0.3)
+    st.pyplot(fig); plt.close()
 
-    elif "H4" in hypo:
-        st.markdown("## H4: Nepal side more dangerous than China/Tibet side")
-        host_comp = ascents.groupby("Host").agg(
-            MortalityRate=("Dth_num", "mean"),
-            OxygenUseRate=("Oxy_num", "mean"),
-            Ascents=("Dth_num", "size"),
-            MeanAge=("Age", "mean"),
-        )
-        host_comp[["MortalityRate", "OxygenUseRate"]] *= 100
-
-        col1, col2 = st.columns(2)
-        with col1:
-            fig = go.Figure()
-            fig.add_trace(go.Bar(x=host_comp.index, y=host_comp["MortalityRate"],
-                                  name="Mortality %", marker_color=RED))
-            fig.add_trace(go.Bar(x=host_comp.index, y=host_comp["OxygenUseRate"],
-                                  name="Oxygen use %", marker_color=BLUE))
-            apply_layout(fig, barmode="group",
-                         title="Mortality & Oxygen use by side",
-                         yaxis_title="%")
-            st.plotly_chart(fig, use_container_width=True)
-
-        with col2:
-            fig2 = go.Figure(data=[go.Pie(
-                labels=host_comp.index, values=host_comp["Ascents"],
-                hole=0.5, marker_colors=[BLUE, ORANGE])])
-            apply_layout(fig2, title="Share of ascents by side")
-            st.plotly_chart(fig2, use_container_width=True)
-
-        side_decade = ascents.groupby(["Decade", "Host"]).size().unstack(fill_value=0)
-        fig3 = go.Figure()
-        for i, host in enumerate(side_decade.columns):
-            fig3.add_trace(go.Scatter(x=side_decade.index.astype(str),
-                                       y=side_decade[host],
-                                       mode="lines+markers", name=host,
-                                       line=dict(color=[BLUE, ORANGE][i % 2], width=2.5)))
-        apply_layout(fig3, title="Ascents by decade: Nepal vs China/Tibet",
-                     xaxis_title="Decade", yaxis_title="Ascents")
-        st.plotly_chart(fig3, use_container_width=True)
-
-        st.markdown("""
-        <div class="warn-box">
-        <b>❌ Hypothesis NOT supported.</b> Nepal side mortality: ~1.13% vs China/Tibet side ~0.69% —
-        a small difference. Oxygen use rates are almost identical (96.8% vs 98.2%).
-        Despite the reputation of the southern route as "commercial" and the northern as "severe",
-        the statistics are comparable. ~78% of all ascents originate from the Nepalese side.
-        </div>""", unsafe_allow_html=True)
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# DEATHS ANALYSIS
-# ═══════════════════════════════════════════════════════════════════════════
-elif section == "Deaths Analysis":
-    st.markdown("## Causes of Death")
-
-    n_causes = st.slider("Number of causes to show", 3, 15, 7)
-    cause_counts = deaths["Cause of death"].value_counts().head(n_causes)
-
-    col1, col2 = st.columns(2)
-    with col1:
-        fig = go.Figure(data=[go.Pie(
-            labels=cause_counts.index, values=cause_counts.values,
-            hole=0.45, pull=[0.05] * len(cause_counts),
-            marker_colors=px.colors.sequential.Blues_r[:len(cause_counts)],
-        )])
-        apply_layout(fig, title=f"Top {n_causes} Causes of Death")
-        st.plotly_chart(fig, use_container_width=True)
-
-    with col2:
-        fig2 = px.bar(cause_counts.reset_index().sort_values("count"),
-                      x="count", y="Cause of death", orientation="h",
-                      color="count",
-                      color_continuous_scale=[[0, "#1a2a3a"], [1, BLUE]],
-                      title=f"Top {n_causes} Causes — Count")
-        apply_layout(fig2)
-        fig2.update_coloraxes(showscale=False)
-        st.plotly_chart(fig2, use_container_width=True)
-
-    st.markdown("## Deaths Over Time")
-    deaths_yr = deaths.groupby("Year").size().reset_index(name="Deaths")
-    fig3 = px.bar(deaths_yr, x="Year", y="Deaths",
-                  color="Deaths",
-                  color_continuous_scale=[[0, "#1a1a2e"], [1, RED]],
-                  title="Recorded Fatalities per Year")
-    apply_layout(fig3)
-    fig3.update_coloraxes(showscale=False)
-    st.plotly_chart(fig3, use_container_width=True)
-
-    st.markdown("## Death Location")
-    if "Location" in deaths.columns:
-        loc_counts = deaths["Location"].value_counts().head(10).reset_index()
-        loc_counts.columns = ["Location", "Deaths"]
-        fig4 = px.bar(loc_counts, x="Deaths", y="Location", orientation="h",
-                      color="Deaths",
-                      color_continuous_scale=[[0, "#1a2030"], [1, ORANGE]],
-                      title="Top 10 Locations of Death on Everest")
-        apply_layout(fig4)
-        fig4.update_coloraxes(showscale=False)
-        st.plotly_chart(fig4, use_container_width=True)
-
-    st.markdown("## Cause Type Breakdown")
-    ct_counts = deaths["CauseType"].value_counts().reset_index()
-    ct_counts.columns = ["CauseType", "Count"]
-    fig5 = px.pie(ct_counts, names="CauseType", values="Count", hole=0.5,
-                  title="Deaths by Cause Category",
-                  color_discrete_sequence=[BLUE, ORANGE, TEAL, RED, GOLD])
-    apply_layout(fig5)
-    st.plotly_chart(fig5, use_container_width=True)
-
-    st.markdown("""
-    <div class="insight-box">
-    <b>Key insight:</b> Falls and avalanches account for the largest share of fatalities,
-    highlighting environmental hazards as the primary killer. Exhaustion, altitude sickness,
-    and frostbite are the leading physiological causes.
-    </div>""", unsafe_allow_html=True)
-
-    st.markdown("## Age of Death Distribution")
-    fig6 = px.histogram(deaths, x="Age", nbins=20,
-                         title="Age Distribution of Fatalities",
-                         color_discrete_sequence=[RED])
-    apply_layout(fig6, xaxis_title="Age", yaxis_title="Count")
-    st.plotly_chart(fig6, use_container_width=True)
+    st.markdown("""<div class="insight-box"><b>Conclusion:</b> Hypothesis NOT supported. Nepal side mortality ~1.13% vs China/Tibet ~0.69% — a small difference. Oxygen use rates are almost identical (96.8% vs 98.2%). ~78% of all ascents are made from the Nepalese side.</div>""", unsafe_allow_html=True)
