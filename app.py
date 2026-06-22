@@ -126,21 +126,13 @@ def styled_fig2(ncols=2, w=14, h=5):
 
 # ── SIDEBAR ──────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("## 🏔️ Everest Explorer")
+    st.markdown("## Trip to the Everest")
     section = st.radio(
         "Section",
-        ["📊 Overview", "👤 Personal Stats", "📈 Plots", "🔬 Detailed Overview"],
+        ["📊 Overview", "👤 Personal Stats", "📈 Plots", "Detailed Overview"],
         label_visibility="collapsed",
     )
-    st.markdown("---")
-    st.markdown("""
-    <div style="font-size:0.78rem; color:#9a5a7a; line-height:1.7;">
-    <b style="color:#e87fa8;">Data</b><br>
-    Ascent Data 1953–2020 · 10 184 rows<br>
-    Deaths since 1922 · 310 rows<br><br>
-    Source: <a href="https://www.himalayandatabase.com" style="color:#e05090;">
-    The Himalayan Database</a>
-    </div>""", unsafe_allow_html=True)
+    
 
 
 st.markdown("# 🏔️ Everest Explorer")
@@ -151,7 +143,7 @@ st.markdown("---")
 # ═══════════════════════════════════════════════════════════════════════════
 # OVERVIEW
 # ═══════════════════════════════════════════════════════════════════════════
-if section == "📊 Overview":
+if section == " Overview":
     st.markdown("## Key Statistics")
     # Row 1
     c1, c2, c3, c4, c5 = st.columns(5)
@@ -159,8 +151,8 @@ if section == "📊 Overview":
         (c1, "Total Ascents",      f"{len(ascents):,}",                                "1953–2020"),
         (c2, "Fatalities",         f"{len(deaths):,}",                                 "since 1922"),
         (c3, "Years Covered",      f"{ascents['Year'].max()-ascents['Year'].min()}",    "years of data"),
-        (c4, "Avg Mortality",      f"{ascents['Dth_num'].mean()*100:.1f}%",            "per ascent"),
-        (c5, "Avg Climber Age",    f"{ascents['Age'].mean():.1f}",                     "years old"),
+        (c4, "Average Mortality",      f"{ascents['Dth_num'].mean()*100:.1f}%",            "per ascent"),
+        (c5, "Average Climber Age",    f"{ascents['Age'].mean():.1f}",                     "years old"),
     ]:
         col.markdown(f"""
         <div class="metric-card">
@@ -198,7 +190,7 @@ if section == "📊 Overview":
     max_age   = int(ascents["Age"].max())
     no_oxy_m  = ascents[ascents["Oxy"] == "No"]["Dth_num"].mean() * 100
     oxy_m     = ascents[ascents["Oxy"] == "Y"]["Dth_num"].mean() * 100
-    top_cause = deaths["Cause of death"].value_counts().index[0]
+    top_cause = deaths["Cause of death from 2 dataset"].value_counts().index[0]
     peak_dth  = deaths.groupby("Year").size().idxmax()
     for col, label, val, sub in [
         (c1, "Youngest Climber",    f"{min_age} yrs",      "on record"),
@@ -271,7 +263,7 @@ if section == "📊 Overview":
 # PERSONAL STATS
 # ═══════════════════════════════════════════════════════════════════════════
 elif section == "👤 Personal Stats":
-    st.markdown("## How do you compare to Everest climbers?")
+    st.markdown("## Imagine you are an Everest climber: ")
 
     col_in, _ = st.columns([1, 2])
     with col_in:
