@@ -72,7 +72,7 @@ plt.rcParams.update({
     "text.color":        PINK2,
     "grid.color":        "#3d1030",
     "grid.alpha":        0.5,
-    "title.color":       PINK2,  # не работает через rcParams для ax.set_title
+    "axes.titlecolor":   PINK2,
 })
 
 
