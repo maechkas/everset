@@ -620,6 +620,32 @@ elif page == "Hypotheses":
         "Better gear, forecasting and commercial logistics drove this improvement.")
 
 # H3
+    elif "H3" in hypo:
+        st.markdown("## H3 · Age by Cause-of-Death Type")
+        sub = deaths[deaths["CauseType"].isin(["External hazard","Physiological"])]
+        fig, ax = mfig(9, 5)
+        for ct, col in [("External hazard", ACC1), ("Physiological", ACC3)]:
+            ages = sub[sub["CauseType"]==ct]["Age"]
+            ax.hist(ages, bins=12, alpha=.6, label=f"{ct} (n={len(ages)})",
+                    color=col, edgecolor=PLT_BG)
+            ax.axvline(ages.mean(), ls="--", color=col, lw=2,
+                       label=f"mean = {ages.mean():.1f}")
+        ax.set_title("Age distribution by cause-of-death type", color=FG)
+        ax.set_xlabel("Age"); ax.set_ylabel("Count")
+        ax.legend(facecolor=PLT_AX, edgecolor=BORDER, labelcolor=PLT_TICK)
+        st.pyplot(fig); plt.close()
+ 
+        stats = sub.groupby("CauseType")["Age"].agg(["mean","median","std","count"])
+        c1,c2,c3,c4 = st.columns(4)
+        card(c1,"Mean age — External",    f"{stats.loc['External hazard','mean']:.1f}","years")
+        card(c2,"Mean age — Physiology",  f"{stats.loc['Physiological','mean']:.1f}","years")
+        diff = stats.loc["Physiological","mean"]-stats.loc["External hazard","mean"]
+        card(c3,"Age gap",                f"+{diff:.1f} yrs","physiology older")
+        card(c4,"Std dev diff",           f"{stats.loc['Physiological','std']:.1f} vs {stats.loc['External hazard','std']:.1f}","wider for physiology")
+        insight(f"<b>✅ Hypothesis SUPPORTED.</b> Climbers dying from external hazards were on "
+                f"average <b>{diff:.1f} years younger</b>. Physiological deaths have wider age spread "
+                f"(std {stats.loc['Physiological','std']:.1f} vs {stats.loc['External hazard','std']:.1f}) — "
+                "altitude illness can strike predisposed younger climbers too.")
     elif "H4" in hypo:
         st.markdown("## H4 · Nepal vs China/Tibet: mortality & oxygen")
         hc = ascents.groupby("Host").agg(
