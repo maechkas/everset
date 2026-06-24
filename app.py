@@ -701,7 +701,7 @@ elif page == "Hypotheses":
 # ═══════════════════════════════════════════════════════════════════════════
 # PAGE 4 — PERSONAL STATS
 # ═══════════════════════════════════════════════════════════════════════════
-elif page == "👤 Personal Stats":
+elif page == "Personal Stats":
 
     st.markdown("## How do you compare to Everest climbers?")
 
@@ -732,7 +732,7 @@ elif page == "👤 Personal Stats":
     mort_age = window["Dth_num"].mean() * 100 if len(window) else 0
     pct_age = (ascents["Age"] <= user_age).mean() * 100
 
-    st.markdown("### 📅 You & your age group")
+    st.markdown("###You & your age group")
     c1, c2, c3, c4 = st.columns(4)
     card(c1, "Climbers within ±5 yrs", f"{len(window):,}", "of your age")
     card(c2, "Mortality at your age", f"{mort_age:.1f}%", "in your age window")
